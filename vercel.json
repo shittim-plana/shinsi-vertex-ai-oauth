@@ -1,0 +1,11 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-deleted-characters",
+      "schedule": "0 2 * * *"
+    },
+    { "path": "/api/cron/aggregate-character-rankings/daily", "schedule": "5 15 * * *" },
+    { "path": "/api/cron/aggregate-character-rankings/weekly", "schedule": "10 15 * * 1" },
+    { "path": "/api/cron/aggregate-character-rankings/monthly", "schedule": "15 15 1 * *" }
+  ]
+}

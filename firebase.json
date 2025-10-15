@@ -1,0 +1,14 @@
+{
+  "storage": {
+    "rules": "storage.rules",
+    "cors": {
+      "origin": ["*"],
+      "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+      "maxAgeSeconds": 3600
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

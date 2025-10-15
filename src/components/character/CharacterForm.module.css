@@ -1,0 +1,10 @@
+.dropzone {
+  border: 2px dashed transparent;
+  border-radius: var(--mantine-radius-md);
+  transition: border-color 0.2s ease;
+}
+
+.dropzoneActive {
+  composes: dropzone; /* Inherit base styles */
+  border-color: var(--mantine-color-blue-6);
+}

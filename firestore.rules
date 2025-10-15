@@ -1,0 +1,227 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 인증된 사용자는 자신의 사용자 데이터만 접근 가능
+    match /users/{userId} {
+      // 관리자(admin)는 모든 사용자 문서를 읽고 쓸 수 있음
+      // 일반 사용자는 본인 문서만 읽기/쓰기 가능
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      );
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      );
+      match /settings/{document=**} {
+        // settings 하위문서는 본인만 접근 가능 (관리자도 직접 설정 변경은 클라이언트에서 하지 않도록 제한)
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // 인증된 사용자만 공용 컬렉션 읽기 가능
+    match /categories/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /trending/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /recommended/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /content/{document=**} {
+      allow read: if request.auth != null;
+    }
+
+    // 공유 채팅방 접근 규칙
+    match /sharedChatRooms/{document=**} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // 인증된 사용자만 채팅방 및 메시지에 접근 가능
+    match /chatRooms/{roomId} {
+      allow read, create, update, delete: if request.auth != null;
+      match /messages/{messageId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+        allow update: if request.auth != null && request.auth.uid == resource.data.senderId;
+        allow delete: if request.auth != null && request.auth.uid == resource.data.senderId;
+      }
+    }
+
+    // 인증된 사용자만 캐릭터 데이터에 접근 가능
+    match /characters/{characterId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        resource.data.creatorId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isSubadmin == true
+      );
+    }
+
+    // 순위 컬렉션 접근 규칙
+    match /dailyRankings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /weeklyRankings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /monthlyRankings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /overallRankings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // 댓글 및 대댓글 규칙
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      match /replies/{replyId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      }
+    }
+    
+    // 포인트 관련 컬렉션 규칙
+    match /pointBalances/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // 클라이언트 트랜잭션 허용: pointTransactions 생성과 원자적으로 연동되어야 함
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.data.keys().hasOnly(['userId', 'balance', 'lastUpdated', 'lastTxId'])
+                   && request.resource.data.userId == userId
+                   && request.resource.data.balance is number
+                   && request.resource.data.balance >= 0
+                   && request.resource.data.lastUpdated is timestamp
+                   && request.resource.data.lastTxId is string
+                   // 같은 커밋에서 해당 거래 문서가 생성되어 있어야 한다
+                   && existsAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId))
+                   && getAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId)).data.userId == userId
+                   && (
+                        getAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId)).data.type == 'attendance' ||
+                        getAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId)).data.type == 'stripe_purchase'
+                      )
+                   && getAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId)).data.amount is number
+                   // 잔액 증가는 해당 거래의 amount 만큼만 허용
+                   && (
+                        request.resource.data.balance
+                        ==
+                        ((resource.data != null ? resource.data.balance : 0)
+                          + getAfter(/databases/$(database)/documents/pointTransactions/$(request.resource.data.lastTxId)).data.amount)
+                      );
+    }
+    
+    match /pointTransactions/{transactionId} {
+      // 본인 거래만 조회 가능
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // 클라이언트 생성 허용: 출석/스트라이프 결제 (수정/삭제 금지)
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.type is string
+                    && (request.resource.data.type == 'attendance' || request.resource.data.type == 'stripe_purchase')
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount >= 0
+                    && (
+                         (request.resource.data.type == 'attendance' && request.resource.data.amount <= 60000) ||
+                         (request.resource.data.type == 'stripe_purchase' && request.resource.data.amount <= 100000000)
+                       )
+                    && request.resource.data.transactionDate is timestamp
+                    && request.resource.data.description is string;
+      allow update, delete: if false;
+    }
+
+    // 출석 컬렉션 규칙
+    match /users/{userId}/attendance/{monthKey} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // 신규 월 문서 생성: 첫 출석만 허용
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.claimCount is int
+                    && request.resource.data.claimCount == 1
+                    && request.resource.data.dayList is list
+                    && request.resource.data.dayList.size() == 1
+                    && request.resource.data.lastClaimedAt is timestamp
+                    && request.resource.data.updatedAt is timestamp
+                    && request.resource.data.createdAt is timestamp;
+
+      // 월 문서 업데이트: 하루에 한 항목만 추가되도록 dayList 크기 +1 강제
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && resource.data != null
+                    && request.resource.data.claimCount is int
+                    && resource.data.claimCount is int
+                    && request.resource.data.claimCount == resource.data.claimCount + 1
+                    && request.resource.data.dayList is list
+                    && resource.data.dayList is list
+                    && request.resource.data.dayList.size() == resource.data.dayList.size() + 1
+                    && request.resource.data.lastClaimedAt is timestamp
+                    && resource.data.lastClaimedAt is timestamp
+                    && request.resource.data.lastClaimedAt > resource.data.lastClaimedAt
+                    && request.resource.data.updatedAt is timestamp;
+
+      allow delete: if false;
+    }
+
+    // rankings snapshots (public read, no client writes)
+    match /rankings_daily/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /rankings_weekly/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /rankings_monthly/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // character rankings snapshots (public read, no client writes)
+    match /rankings_character_daily/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /rankings_character_weekly/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /rankings_character_monthly/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Lorebooks collection rules
+    match /lorebooks/{lorebookId} {
+      allow read: if request.auth != null && (
+        resource.data.isPublic == true ||
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isSubadmin == true
+      );
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isSubadmin == true
+      );
+    }
+
+    // 기본적으로 모든 접근 거부
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

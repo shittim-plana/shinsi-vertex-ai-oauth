@@ -1,0 +1,1022 @@
+.backgroundLayer {
+  position: fixed;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  filter: blur(var(--blur, 8px));
+  transform: translateZ(0);
+}
+
+/* Novel 내부 오버레이는 Mantine 오버레이/포탈 레이어와 충돌하지 않도록 클래스 범위를 한정 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* 배경 투명도는 Mantine 오버레이에 영향을 주지 않도록 전용 CSS 변수 사용 */
+  background: rgba(255, 255, 255, var(--novel-overlay, 0.7));
+  pointer-events: none; /* 인터랙션은 상위 UI가 처리 */
+}
+
+/* Enhanced Shell Structure */
+.novelShellWrapper {
+  position: relative;
+  min-height: calc(100dvh - 32px);
+  height: calc(100dvh - 32px);
+  /* Sticky footer가 동작하도록 수직 방향 overflow는 허용하고, 가로만 클리핑 처리 */
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  color: var(--novel-text-primary);
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 32px); /* 컨테이너 패딩을 제외해 외부 스크롤 제거 */
+  /* 스크롤 컨테이너를 셸로 승격하여 헤더/푸터 sticky가 정상 동작하도록 변경 */
+  overflow-y: auto;
+
+  /* 스크롤바 숨김 (Firefox/IE/Edge/Chromium/WebKit) */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE 10+ / Edge 레거시 */
+}
+.shell::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;                  /* Chrome/Safari/Edge(Chromium) */
+}
+
+.shellHeader {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px; /* PC 환경에서 더 넓은 레이아웃을 위해 너비 증가 */
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px;
+}
+
+.shellContent {
+  flex: 1;
+  padding: 24px 0;
+  /* 고정 입력창(.shellFooter position: fixed)과 겹침 방지를 위한 하단 여백 */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom) + 120px);
+}
+
+.shellFooter {
+  /* 셸(.shell)이 스크롤 컨테이너이므로 sticky bottom으로 하단 고정 */
+  position: sticky;
+  bottom: 0;
+  z-index: 1000;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.notificationsContainer {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.notificationsContainer > * {
+  pointer-events: auto;
+  margin-bottom: 12px;
+}
+
+.narrative {
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1.8;
+  max-width: var(--narrativeMax, 920px);
+  color: #000000;
+}
+
+.msgImage {
+  width: min(var(--imageWidth, 720px), 100%);
+  border-radius: var(--radius, 10px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+
+.caption {
+  opacity: .8;
+  font-size: 13px;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* Novel Header Styles */
+.novelHeader {
+  position: relative;
+  z-index: 10;
+  padding: 20px 24px;
+  /* background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%); */
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  /* Mantine 포털 레이어와 시각 충돌 방지 */
+  isolation: isolate;
+}
+
+.headerButton {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--novel-text-primary);
+  transition: all 0.2s ease;
+}
+
+.headerButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.skinSelector {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--novel-text-primary);
+}
+
+.skinSelector input {
+  color: var(--novel-text-primary) !important;
+  background: transparent !important;
+}
+
+.projectInfo {
+  margin-top: 16px;
+}
+
+.projectAvatar {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Common Variables */
+.root {
+  --novel-glass-bg: rgba(255, 255, 255, 0.8);
+  --novel-glass-border: rgba(0, 0, 0, 0.15);
+  --novel-glass-hover: rgba(255, 255, 255, 0.9);
+  --novel-text-primary: rgba(0, 0, 0, 0.9);
+  --novel-text-secondary: rgba(0, 0, 0, 0.7);
+  --novel-text-muted: rgba(0, 0, 0, 0.5);
+  --novel-shadow-light: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --novel-shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --novel-backdrop-blur: blur(10px);
+  --novel-transition: all 0.2s ease;
+}
+
+/* Glass Effect Utility */
+.glassEffect {
+  background: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  backdrop-filter: var(--novel-backdrop-blur);
+  transition: var(--novel-transition);
+}
+
+.glassEffect:hover {
+  background: var(--novel-glass-hover);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Message Input Styles for Novel */
+.novelMessageInput {
+  /* PC에서 메시지 입력 영역 투명도 제거 */
+  backdrop-filter: none;
+  border-top: 1px solid var(--novel-glass-border);
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.novelMessageInput textarea {
+  background: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  color: var(--novel-text-primary);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: var(--novel-transition);
+}
+
+.novelMessageInput textarea:focus {
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.novelMessageInput textarea::placeholder {
+  color: var(--novel-text-muted);
+}
+
+.novelMessageInput button {
+  background: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  color: var(--novel-text-primary);
+  transition: var(--novel-transition);
+}
+
+.novelMessageInput button:hover {
+  background: var(--novel-glass-hover);
+  border-color: rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Enhanced Message Styles */
+.narrativeContainer {
+  margin-bottom: 24px;
+}
+
+.characterName {
+  color: var(--novel-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-left: 4px;
+  border-left: 3px solid var(--novel-text-muted);
+  padding-left: 12px;
+}
+
+/* Override existing narrative styles */
+.narrative {
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1.8;
+  max-width: var(--narrativeMax, 920px);
+  color: #000000;
+}
+
+.narrative p {
+  margin-bottom: 16px;
+}
+
+.narrative h1, .narrative h2, .narrative h3, .narrative h4, .narrative h5, .narrative h6 {
+  color: var(--novel-text-primary);
+  margin: 20px 0 12px 0;
+  font-weight: 600;
+}
+
+.narrative h1 { font-size: 24px; }
+.narrative h2 { font-size: 22px; }
+.narrative h3 { font-size: 20px; }
+.narrative h4 { font-size: 18px; }
+
+.narrative strong, .narrative b {
+  color: var(--novel-text-primary);
+  font-weight: 700;
+}
+
+.narrative em, .narrative i {
+  font-style: italic;
+}
+
+.narrative code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+.narrative pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.narrative blockquote {
+  border-left: 4px solid rgba(0, 0, 0, 0.3);
+  padding-left: 16px;
+  margin: 16px 0;
+  font-style: italic;
+  color: inherit;
+}
+
+.narrative ul, .narrative ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.narrative li {
+  margin-bottom: 8px;
+  color: var(--novel-text-primary);
+}
+
+.imageContainer {
+  max-width: 100%;
+  margin: 20px 0;
+  text-align: center;
+}
+
+/* Override existing msgImage styles */
+.msgImage {
+  width: min(var(--imageWidth, 720px), 100%);
+  border-radius: var(--radius, 10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.msgImage:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Override existing caption styles */
+.caption {
+  opacity: 0.8;
+  font-size: 13px;
+  font-style: italic;
+  margin-top: 8px;
+  color: inherit;
+  text-align: center;
+}
+
+/* User Message Styles */
+.userMessageContainer {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 24px;
+}
+
+.userMessage {
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1.8;
+  max-width: var(--narrativeMax, 920px);
+  color: #000000;
+}
+
+.userMessage em, .userMessage i {
+  font-style: italic;
+}
+
+.novel-italic {
+  font-style: italic;
+  color: #000000;
+}
+
+.userMessage em, .userMessage i {
+  color: #ff7a00;
+}
+
+.userText {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+.userImageContainer {
+  margin-top: 12px;
+}
+
+.userImage {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .narrative {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  .userMessage {
+    max-width: 90%;
+    padding: 10px 14px;
+  }
+  
+  .msgImage {
+    border-radius: 8px;
+  }
+  
+  .novelHeader {
+    padding: 16px 20px;
+  }
+  
+  .projectInfo {
+    margin-top: 12px;
+  }
+  
+  .projectAvatar {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* Animation for message appearance */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.narrativeContainer,
+.userMessageContainer {
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+/* Novel Notification Styles */
+.novelNotification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(54, 57, 63, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 300px;
+  max-width: 400px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: notificationSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.notificationAvatar {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.notificationAppName {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.notificationTime {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.notificationMessage {
+  white-space: pre-line;
+  word-wrap: break-word;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.notificationClose {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.notificationClose:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes notificationSlideIn {
+  from {
+    transform: translateX(100%) translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Legacy notification styles - unified with novel notifications */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(54, 57, 63, 0.95);
+  border: 1px solid var(--novel-glass-border);
+  border-radius: 8px;
+  padding: 16px;
+  color: var(--novel-text-primary);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--novel-shadow-heavy);
+  max-width: 350px;
+  animation: notificationSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Performance optimizations */
+.backgroundLayer,
+.overlay,
+.novelNotification,
+.narrativeContainer,
+.userMessageContainer {
+  will-change: transform, opacity;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .narrativeContainer,
+  .userMessageContainer,
+  .novelNotification,
+  .notification {
+    animation: none;
+  }
+  
+  .msgImage:hover {
+    transform: none;
+  }
+  
+  .novelMessageInput button:hover {
+    transform: none;
+  }
+}
+
+/* Message Options Styles */
+.messageOptions {
+  background: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  border-radius: 8px;
+  padding: 4px;
+  backdrop-filter: var(--novel-backdrop-blur);
+  box-shadow: var(--novel-shadow-light);
+}
+
+.optionButton {
+  background: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  color: var(--novel-text-primary);
+  transition: var(--novel-transition);
+  border-radius: 6px;
+}
+
+.optionButton:hover {
+  background: var(--novel-glass-hover);
+  border-color: rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: var(--novel-shadow-light);
+}
+
+.optionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Narrative Container Enhancements */
+.narrativeContainer {
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.narrativeContainer:hover .messageOptions {
+  opacity: 1;
+}
+
+/* User Message Container Enhancements */
+.userMessageContainer {
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.userMessageContainer:hover .messageOptions {
+  opacity: 1;
+}
+
+/* Loading Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced Character Name with Timestamp */
+.characterName {
+  color: var(--novel-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-left: 4px;
+  border-left: 3px solid var(--novel-text-muted);
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Image Error State */
+.imageError {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  margin: 12px 0;
+  cursor: pointer;
+  transition: var(--novel-transition);
+}
+
+.imageError:hover {
+  background: rgba(255, 0, 0, 0.15);
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+/* Loading States */
+.loadingState {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 12px 0;
+  font-style: normal;
+  color: #ff7a00;
+}
+
+/* Enhanced Image Styling */
+.msgImage {
+  width: min(var(--imageWidth, 720px), 100%);
+  border-radius: var(--radius, 10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.msgImage:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.userImage {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.userImage:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Adjustments for Message Options */
+@media (max-width: 768px) {
+  .messageOptions {
+    padding: 2px;
+  }
+  
+  .optionButton {
+    padding: 6px;
+  }
+  
+  .characterName {
+    font-size: 13px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .backgroundLayer {
+    filter: blur(var(--blur, 8px)) brightness(0.8);
+  }
+  
+  /* Novel 다크모드 전용 변수 오버라이드 */
+  .root {
+    --novel-glass-bg: rgba(45, 45, 45, 0.8);
+    --novel-glass-border: rgba(255, 255, 255, 0.15);
+    --novel-glass-hover: rgba(55, 55, 55, 0.9);
+    --novel-text-primary: rgba(255, 255, 255, 0.9);
+    --novel-text-secondary: rgba(255, 255, 255, 0.7);
+    --novel-text-muted: rgba(255, 255, 255, 0.5);
+    --novel-shadow-light: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --novel-shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+  
+  .novelHeader {
+    background: linear-gradient(180deg, rgba(45, 45, 45, 0.9) 0%, rgba(35, 35, 35, 0.7) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .novelMessageInput {
+    /* 다크 모드에서도 완전 불투명 */
+    background: #2b2b2b;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: none;
+  }
+  
+  .overlay {
+    background: rgba(0, 0, 0, var(--novel-overlay, 0.5));
+  }
+
+  .optionButton:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Image Preview Styles */
+.imagePreview {
+  position: relative;
+}
+
+.imagePreviewDesktop {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 8px;
+}
+
+.imagePreviewMobile {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 8px;
+}
+
+.imagePreviewCloseButton {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.imagePreviewCloseButtonMobile {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+}
+
+/* Input Group Styles */
+.inputGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.textareaContainer {
+  flex: 1;
+  position: relative;
+}
+
+.mobileInputContainer {
+  width: 100%;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* Mobile fixed dark footer bar */
+.mobileDarkBar {
+  background: #1f1f1f;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 12px 16px;
+}
+
+/* Message Options Positioning */
+.messageOptionsContainer {
+  position: relative;
+}
+
+.messageOptionsOverlay {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.messageOptionsContainer:hover .messageOptionsOverlay {
+  opacity: 1;
+}
+
+/* Loading States */
+.loadingSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--novel-text-muted);
+  border-top: 2px solid var(--novel-text-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loadingSpinnerLarge {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--novel-text-muted);
+  border-top: 2px solid var(--novel-text-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loadingContainer {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  font-style: normal;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageLoadingContainer {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Error States */
+.imageErrorContainer {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  margin: 12px 0;
+  cursor: pointer;
+  transition: var(--novel-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.imageErrorContainer:hover {
+  background: rgba(255, 0, 0, 0.15);
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+/* Message List Container */
+.messageListContainer {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  width: 100%; /* 너비를 100%로 설정하여 컨테이너에 맞춤 */
+}
+
+/* User Message Timestamp */
+.userMessageTimestamp {
+  text-align: right;
+  margin-bottom: 4px;
+}
+
+/* Character Name with Timestamp */
+.characterNameWithTime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Send Button Styling */
+.sendButton {
+  background-color: var(--novel-glass-bg);
+  border: 1px solid var(--novel-glass-border);
+  color: var(--novel-text-primary);
+}
+
+/* Header Text Styles */
+.headerTextContainer {
+  flex: 1;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  .messageListContainer {
+    min-width: auto;
+    max-width: 100%;
+  }
+  
+  .characterNameWithTime {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+
+/* Dark theme overrides: align with classic chat colors */
+@media (prefers-color-scheme: dark) {
+  /* Non-italic defaults (bot/narration = yellow) */
+  .narrative,
+  .narrative p,
+  .narrative h1, .narrative h2, .narrative h3, .narrative h4, .narrative h5, .narrative h6,
+  .narrative strong, .narrative b,
+  .narrative li {
+    color: #ffd400;
+    font-style: normal;
+  }
+
+  /* Player lines = white */
+  .userMessage,
+  .userMessage p,
+  .userMessage h1, .userMessage h2, .userMessage h3, .userMessage h4, .userMessage h5, .userMessage h6,
+  .userMessage strong, .userMessage b,
+  .userMessage li {
+    color: #ffffff;
+    font-style: normal;
+  }
+
+  /* Italic segments = orange */
+  .narrative em,
+  .narrative i,
+  .userMessage em,
+  .userMessage i,
+  .caption,
+  .narrative blockquote {
+    color: #ff7a00;
+    font-style: italic;
+  }
+}
+
+/* Mantine color-scheme alignment to match classic theme in dark mode */
+:global([data-mantine-color-scheme="dark"]) .narrative {
+  color: #ffd400; /* narration/bot = yellow */
+  font-style: normal;
+}
+:global([data-mantine-color-scheme="dark"]) .userMessage {
+  color: #ffffff; /* player lines = white */
+  font-style: normal;
+}
+:global([data-mantine-color-scheme="dark"]) .narrative em,
+:global([data-mantine-color-scheme="dark"]) .narrative i,
+:global([data-mantine-color-scheme="dark"]) .userMessage em,
+:global([data-mantine-color-scheme="dark"]) .userMessage i,
+:global([data-mantine-color-scheme="dark"]) .caption,
+:global([data-mantine-color-scheme="dark"]) .narrative blockquote {
+  color: #ff7a00; /* italic segments = orange */
+  font-style: italic;
+}
+
+/* Theme-aware Chat Footer (NovelMessageInput) - responds to Mantine color scheme, not OS */
+:global([data-mantine-color-scheme="light"]) .novelMessageInput {
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  color: rgba(0,0,0,0.9);
+  backdrop-filter: none;
+}
+
+:global([data-mantine-color-scheme="light"]) .novelMessageInput textarea {
+  background: #ffffff;
+  color: rgba(0,0,0,0.9);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+:global([data-mantine-color-scheme="light"]) .novelMessageInput button {
+  background: #ffffff;
+  color: rgba(0,0,0,0.9);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile footer bar should also be theme-aware (was always dark) */
+:global([data-mantine-color-scheme="light"]) .mobileDarkBar {
+  background: #ffffff;
+  border-top: 1px solid rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.9);
+}
+
+:global([data-mantine-color-scheme="dark"]) .novelMessageInput {
+  background: #2b2b2b;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.9);
+  backdrop-filter: none;
+}
+
+:global([data-mantine-color-scheme="dark"]) .novelMessageInput textarea {
+  background: #2f2f2f;
+  color: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+:global([data-mantine-color-scheme="dark"]) .novelMessageInput button {
+  background: #2f2f2f;
+  color: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+:global([data-mantine-color-scheme="dark"]) .mobileDarkBar {
+  background: #1f1f1f;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.9);
+}
