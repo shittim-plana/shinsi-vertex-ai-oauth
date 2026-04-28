@@ -176,6 +176,124 @@ Cron/운영
 
 ---
 
+## Vertex AI OAuth 설정 가이드
+
+이 fork는 사용자가 **자신의 GCP 계정을 연결**하여 Vertex AI Gemini 모델을 본인 할당량으로 사용할 수 있는 OAuth 통합을 포함합니다. 서비스 계정 키 없이 사용자별 OAuth로 인증합니다.
+
+### 구조
+
+```
+src/utils/vertex-ai/
+├── constants.ts          — OAuth 상수 (스코프, 엔드포인트, 갱신 마진)
+├── token-manager.ts      — 토큰 저장/갱신/조회 (Firestore)
+└── client.ts             — GoogleGenAI 인스턴스 생성 (ADC 격리)
+
+src/app/api/vertex-ai/
+├── auth/route.ts         — OAuth 시작 (Google consent 화면 리다이렉트)
+├── callback/route.ts     — OAuth 콜백 (code → token 교환, Firestore 저장)
+├── disconnect/route.ts   — 연결 해제 (토큰 폐기 + Firestore 삭제)
+├── projects/route.ts     — GCP 프로젝트 목록 조회
+└── verify/route.ts       — 무결성 검사 (3단계: 설정→토큰→API 호출)
+
+src/components/settings/
+└── VertexAIConnection.tsx — 설정 UI (연결/해제/검사/토글)
+
+lib/
+├── vertex-ai-oauth.js          — 유니버설 참조 구현
+├── vertex-ai-oauth.browser.js  — 브라우저 참조 구현
+├── vertex-ai-oauth-server.js   — 서버 참조 구현
+├── vertex-ai-api-routes-reference.md — API 엔드포인트 명세
+└── vertex-ai-ui-wireframe.md   — UI 와이어프레임
+```
+
+### 흐름
+
+```
+사용자 (Firebase Auth 로그인 완료)
+  → 설정 페이지 "GCP 계정 연결" 클릭
+  → GET /api/vertex-ai/auth?uid=...&projectId=...&region=...
+  → Google OAuth consent (scope: cloud-platform + projects.readonly)
+  → Google → GET /api/vertex-ai/callback?code=...&state=...
+  → code → token 교환 → Firestore users/{uid}.vertexAI 저장
+  → 이후 채팅 시 자동으로 사용자 Vertex AI 토큰 사용
+  → 토큰 만료 시 refresh_token으로 자동 갱신
+```
+
+### 환경변수 설정
+
+`vercel.json`의 `env` 섹션을 채우세요:
+
+| 변수 | 설명 | 얻는 곳 |
+|------|------|---------|
+| `GCP_OAUTH_CLIENT_ID` | OAuth 2.0 클라이언트 ID | GCP Console → APIs & Services → Credentials |
+| `GCP_OAUTH_CLIENT_SECRET` | OAuth 2.0 클라이언트 시크릿 | 동일 |
+| `VERTEX_AI_REDIRECT_URI` | 콜백 URL | `https://YOUR_DOMAIN/api/vertex-ai/callback` |
+| `GOOGLE_CLIENT_ID` | = GCP_OAUTH_CLIENT_ID (동일 값) | 동일 |
+| `GOOGLE_CLIENT_SECRET` | = GCP_OAUTH_CLIENT_SECRET (동일 값) | 동일 |
+| `NEXTAUTH_SECRET` | 세션 시크릿 (랜덤 문자열) | `openssl rand -hex 32` |
+| `NEXTAUTH_URL` | 사이트 URL | `https://YOUR_DOMAIN` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | 서비스 계정 JSON (서버 폴백용) | GCP Console → IAM → Service Accounts |
+
+### GCP OAuth 클라이언트 생성 방법
+
+1. [GCP Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+2. "Create Credentials" → "OAuth 2.0 Client ID"
+3. Application type: **Web application**
+4. Authorized redirect URIs에 추가: `https://YOUR_DOMAIN/api/vertex-ai/callback`
+5. Client ID와 Client Secret를 `vercel.json`에 입력
+
+### OAuth 동의 화면 설정
+
+1. GCP Console → APIs & Services → OAuth consent screen
+2. User type: **External** (또는 Internal for Workspace)
+3. App name, support email 등 입력
+4. Scopes 추가:
+   - `https://www.googleapis.com/auth/cloud-platform`
+   - `https://www.googleapis.com/auth/cloudplatformprojects.readonly`
+5. **Test users** 탭에서 사용자 Gmail 추가 (앱 게시 전까지 필수)
+
+> ⚠️ 앱이 "Testing" 상태일 때는 Test users에 등록된 Gmail만 OAuth 인증 가능합니다.
+> 모든 사용자에게 열려면 Google의 앱 검증(verification)을 통과해야 합니다.
+
+### Vertex AI API 활성화
+
+사용자의 GCP 프로젝트에서 아래 API가 활성화되어 있어야 합니다:
+- Vertex AI API (`aiplatform.googleapis.com`)
+- Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
+
+### Firestore 스키마
+
+`users/{uid}` 문서에 `vertexAI` 필드가 자동 생성됩니다:
+
+```json
+{
+  "vertexAI": {
+    "refreshToken": "...",
+    "accessToken": "...",
+    "tokenExpiresAt": 1720000000000,
+    "gcpProjectId": "my-project",
+    "region": "global",
+    "connectedAt": 1720000000000,
+    "scope": "https://www.googleapis.com/auth/cloud-platform ...",
+    "enabled": true
+  }
+}
+```
+
+### 참고
+
+- `lib/vertex-ai-api-routes-reference.md` — 전체 API 명세 (요청/응답/에러 코드)
+- `src/utils/vertex-ai/client.ts` — ADC 격리 전략 (서비스 계정 키가 사용자 OAuth 경로에 노출되지 않도록)
+- 토큰은 만료 5분 전에 자동 갱신됩니다 (`VERTEX_REFRESH_MARGIN_MS`)
+
+### 라이선스 및 출처
+
+Vertex AI OAuth 구현은 [vertex-ai-oauth by shittim-plana](https://github.com/shittim-plana/vertex-ai-oauth)를 기반으로 합니다.
+
+`lib/` 디렉토리의 참조 구현 파일들은 vertex-ai-oauth 라이선스 (Attribution + No-Sell + Share-Alike)를 따릅니다. 자세한 내용은 [vertex-ai-oauth LICENSE](https://github.com/shittim-plana/vertex-ai-oauth/blob/main/LICENSE)를 참고하세요.
+
+---
+
 ## 🇺🇸 Overview (English)
 
 An AI character chat/creation platform built with Next.js 15 (App Router) and React 19. It combines Firebase (Auth/Firestore/Storage/Analytics) and Supabase (pgvector) to deliver long‑term memory RAG, summary rollups (SUPA/HYPA), group chat, character/lore management, and an economy layer (points, Stripe, Patreon). PWA and Vercel Cron are supported.
@@ -320,3 +438,42 @@ Docs
 
 License
 - Apache-2.0 licensed.
+
+---
+
+## Vertex AI OAuth Setup Guide
+
+This fork includes a user-level OAuth integration that lets each user **connect their own GCP account** to use Vertex AI Gemini models with their own quota — no service account key sharing required.
+
+### Required Environment Variables
+
+Fill in the `env` section of `vercel.json`:
+
+| Variable | Description | Where to get |
+|----------|-------------|--------------|
+| `GCP_OAUTH_CLIENT_ID` | OAuth 2.0 Client ID | GCP Console → APIs & Services → Credentials |
+| `GCP_OAUTH_CLIENT_SECRET` | OAuth 2.0 Client Secret | Same |
+| `VERTEX_AI_REDIRECT_URI` | Callback URL | `https://YOUR_DOMAIN/api/vertex-ai/callback` |
+| `GOOGLE_CLIENT_ID` | Same as GCP_OAUTH_CLIENT_ID | Same |
+| `GOOGLE_CLIENT_SECRET` | Same as GCP_OAUTH_CLIENT_SECRET | Same |
+| `NEXTAUTH_SECRET` | Session secret (random string) | `openssl rand -hex 32` |
+| `NEXTAUTH_URL` | Site URL | `https://YOUR_DOMAIN` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON (server fallback) | GCP Console → IAM → Service Accounts |
+
+### Setup Steps
+
+1. **Create OAuth Client**: GCP Console → Credentials → Create OAuth 2.0 Client ID (Web application)
+2. **Add redirect URI**: `https://YOUR_DOMAIN/api/vertex-ai/callback`
+3. **Configure consent screen**: Add scopes `cloud-platform` and `cloudplatformprojects.readonly`
+4. **Add test users**: While app is in "Testing" status, manually add Gmail addresses in OAuth consent screen → Test users
+5. **Enable APIs** in each user's GCP project: Vertex AI API + Cloud Resource Manager API
+
+> ⚠️ While your OAuth app is in "Testing" mode, only manually added test users can authorize. To open it to all users, you must pass Google's app verification.
+
+See `lib/vertex-ai-api-routes-reference.md` for full API endpoint documentation.
+
+### License & Attribution
+
+The Vertex AI OAuth implementation is based on [vertex-ai-oauth by shittim-plana](https://github.com/shittim-plana/vertex-ai-oauth).
+
+Reference implementation files in `lib/` are subject to the vertex-ai-oauth license (Attribution + No-Sell + Share-Alike). See [vertex-ai-oauth LICENSE](https://github.com/shittim-plana/vertex-ai-oauth/blob/main/LICENSE) for details.

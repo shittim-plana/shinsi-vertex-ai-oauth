@@ -7,5 +7,15 @@
     { "path": "/api/cron/aggregate-character-rankings/daily", "schedule": "5 15 * * *" },
     { "path": "/api/cron/aggregate-character-rankings/weekly", "schedule": "10 15 * * 1" },
     { "path": "/api/cron/aggregate-character-rankings/monthly", "schedule": "15 15 1 * *" }
-  ]
+  ],
+  "env": {
+    "GCP_OAUTH_CLIENT_ID": "",
+    "GCP_OAUTH_CLIENT_SECRET": "",
+    "VERTEX_AI_REDIRECT_URI": "https://YOUR_DOMAIN/api/vertex-ai/callback",
+    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_SECRET": "",
+    "NEXTAUTH_SECRET": "",
+    "NEXTAUTH_URL": "https://YOUR_DOMAIN",
+    "GOOGLE_APPLICATION_CREDENTIALS": ""
+  }
 }
