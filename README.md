@@ -292,6 +292,14 @@ Vertex AI OAuth 구현은 [vertex-ai-oauth by shittim-plana](https://github.com/
 
 `lib/` 디렉토리의 참조 구현 파일들은 vertex-ai-oauth 라이선스 (Attribution + No-Sell + Share-Alike)를 따릅니다. 자세한 내용은 [vertex-ai-oauth LICENSE](https://github.com/shittim-plana/vertex-ai-oauth/blob/main/LICENSE)를 참고하세요.
 
+### PostgreSQL 통합 (마이그레이션 후)
+
+DB를 Firestore에서 PostgreSQL로 마이그레이션한 경우, 토큰 저장소도 PostgreSQL로 이전할 수 있습니다:
+
+**[Next.js + PostgreSQL 통합 가이드](docs/integration-nextjs-postgresql.md)**
+
+주요 변경: Firestore `users/{uid}.vertexAI` → PostgreSQL `vertex_ai_connections` 테이블, UI 상태 조회용 `/api/vertex-ai/status` API 추가.
+
 ---
 
 ## 🇺🇸 Overview (English)
@@ -477,3 +485,11 @@ See `lib/vertex-ai-api-routes-reference.md` for full API endpoint documentation.
 The Vertex AI OAuth implementation is based on [vertex-ai-oauth by shittim-plana](https://github.com/shittim-plana/vertex-ai-oauth).
 
 Reference implementation files in `lib/` are subject to the vertex-ai-oauth license (Attribution + No-Sell + Share-Alike). See [vertex-ai-oauth LICENSE](https://github.com/shittim-plana/vertex-ai-oauth/blob/main/LICENSE) for details.
+
+### PostgreSQL Integration (Post-Migration)
+
+If you've migrated from Firestore to PostgreSQL, you can move the token storage to PostgreSQL as well:
+
+**[Next.js + PostgreSQL Integration Guide](docs/integration-nextjs-postgresql.md)**
+
+Key change: Firestore `users/{uid}.vertexAI` → PostgreSQL `vertex_ai_connections` table, with a new `/api/vertex-ai/status` API for UI state queries.
