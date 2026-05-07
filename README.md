@@ -294,9 +294,32 @@ Vertex AI OAuth 구현은 [vertex-ai-oauth by shittim-plana](https://github.com/
 
 ### PostgreSQL 통합 (마이그레이션 후)
 
-DB를 Firestore에서 PostgreSQL로 마이그레이션한 경우, 토큰 저장소도 PostgreSQL로 이전할 수 있습니다:
+DB를 Firestore에서 PostgreSQL로 마이그레이션한 경우, `lib/vertex-ai-oauth-postgresql.js`를 사용하여 토큰 저장소도 PostgreSQL로 이전할 수 있습니다:
 
-**[Next.js + PostgreSQL 통합 가이드](docs/integration-nextjs-postgresql.md)**
+```sql
+CREATE TABLE vertex_ai_connections (
+  user_id VARCHAR(255) PRIMARY KEY,
+  refresh_token TEXT NOT NULL,
+  access_token TEXT,
+  token_expires_at BIGINT NOT NULL,
+  gcp_project_id VARCHAR(255) NOT NULL,
+  region VARCHAR(50) DEFAULT 'global',
+  scope TEXT,
+  enabled BOOLEAN DEFAULT true,
+  connected_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+```
+
+```javascript
+const { createTokenManager } = require('./lib/vertex-ai-oauth-postgresql');
+const manager = createTokenManager({ query, clientId, clientSecret });
+
+const creds = await manager.getValidCredentials(userId);  // 자동 갱신
+await manager.storeTokens({ uid, refreshToken, accessToken, expiresIn, projectId, region });
+const status = await manager.getStatus(userId);  // { connected, minutesLeft }
+await manager.disconnect(userId);  // Google 폐기 + DB 삭제
+```
 
 주요 변경: Firestore `users/{uid}.vertexAI` → PostgreSQL `vertex_ai_connections` 테이블, UI 상태 조회용 `/api/vertex-ai/status` API 추가.
 
@@ -488,8 +511,16 @@ Reference implementation files in `lib/` are subject to the vertex-ai-oauth lice
 
 ### PostgreSQL Integration (Post-Migration)
 
-If you've migrated from Firestore to PostgreSQL, you can move the token storage to PostgreSQL as well:
+If you've migrated from Firestore to PostgreSQL, use `lib/vertex-ai-oauth-postgresql.js` to move token storage:
 
-**[Next.js + PostgreSQL Integration Guide](docs/integration-nextjs-postgresql.md)**
+```javascript
+const { createTokenManager } = require('./lib/vertex-ai-oauth-postgresql');
+const manager = createTokenManager({ query, clientId, clientSecret });
 
-Key change: Firestore `users/{uid}.vertexAI` → PostgreSQL `vertex_ai_connections` table, with a new `/api/vertex-ai/status` API for UI state queries.
+const creds = await manager.getValidCredentials(userId);  // auto-refresh
+await manager.storeTokens({ uid, refreshToken, accessToken, expiresIn, projectId, region });
+const status = await manager.getStatus(userId);  // { connected, minutesLeft }
+await manager.disconnect(userId);  // revoke + delete
+```
+
+See the [vertex-ai-oauth repository](https://github.com/shittim-plana/vertex-ai-oauth) for full schema and documentation.
